@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>呼吸病患評估系統 - 自動分級版</title>
+    <style>
+        :root {
+            --bg-color: #ffebd7; 
+            --accent-orange: #ff9f43;
+            --default-blue: #1e3799;
+            /* 程度顏色 */
+            --level-low: #27ae60;    /* 綠色 */
+            --level-mid: #f1c40f;    /* 黃色 */
+            --level-high: #e67e22;   /* 橘色 */
+            --level-critical: #e74c3c;/* 紅色 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: "Microsoft JhengHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 850px;
+            width: 100%;
+        }
+
+        h2, h3 { text-align: center; color: #d35400; margin-top: 10px; }
+
+        .info-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .info-row input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+
+        /* CAT 項目樣式 */
+        .cat-item {
+            display: flex;
+            align-items: center;
+            background: #fdfdfd;
+            margin-bottom: 12px;
+            padding: 12px 15px;
+            border-radius: 15px;
+            border: 1px solid #eee;
+            transition: 0.2s;
+        }
+        .cat-item:hover { background: #fff8f0; }
+        .cat-text-left { flex: 2; text-align: right; padding-right: 15px; font-size: 0.9em; color: #666; }
+        .cat-text-right { flex: 2; text-align: left; padding-left: 15px; font-size: 0.9em; color: #666; }
+        .cat-options { flex: 3; display: flex; justify-content: space-between; }
+
+        /* 分數按鈕 */
+        .score-btn {
+            width: 36px;
+            height: 36px;
+            border: 2px solid #3498db;
+            background: white;
+            color: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .score-btn.active {
+            background: #3498db;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* mMRC 樣式 */
+        .mmrc-section {
+            background: #fffcf5;
+            padding: 15px;
+            border-radius: 15px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px dashed var(--accent-orange);
+        }
+
+        /* 總分顯示區（會變色） */
+        #total-display-area {
+            background: var(--default-blue); /* 初始藍色 */
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.5s ease; /* 顏色平滑過渡 */
+        }
+        .total-box {
+            background: white;
+            color: #333;
+            font-size: 32px;
+            font-weight: bold;
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            background: var(--accent-orange);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #e67e22;
+        }
+        .submit-btn:active { transform: translateY(2px); box-shadow: none; }
+
+        /* 後台表格 */
+        .admin-table {
+            margin-top: 40px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            border-collapse: collapse;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .admin-table th, .admin-table td {
+            border: 1px solid #eee;
+            padding: 12px;
+            text-align: center;
+        }
+        .admin-table th { background: #f8f9fa; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>胸腔內科衛教回診呼吸評估表 (CAT & mMRC)</h2>
+    
+    <div class="info-row">
+        <div>病人姓名：<input type="text" id="patientName" placeholder="填寫姓名"></div>
+        <div>回診日期：<input type="date" id="visitDate"></div>
+    </div>
+
+    <h3>CAT 慢性阻塞性肺病評估</h3>
+    <div id="cat-questions"></div>
+
+    <div class="mmrc-section">
+        <strong>mMRC 呼吸困難量表：</strong>
+        <select id="mmrcScore" style="padding: 8px; border-radius: 8px; border: 1px solid #ccc;">
+            <option value="0">0 級 (僅劇烈運動才喘)</option>
+            <option value="1">1 級 (趕路或小斜坡會喘)</option>
+            <option value="2">2 級 (走路比同齡慢或需休息)</option>
+            <option value="3">3 級 (走 100 公尺或數分鐘需休息)</option>
+            <option value="4">4 級 (喘到無法出門或穿衣也喘)</option>
+        </select>
+    </div>
+
+    <div id="total-display-area">
+        <div style="font-size: 24px; font-weight: bold;">CAT 總評分</div>
+        <div id="severity-text" style="font-size: 20px; font-weight: bold;">請開始填寫</div>
+        <div class="total-box" id="totalScoreDisplay">0</div>
+    </div>
+
+    <button class="submit-btn" onclick="submitData()">確認送出資料</button>
+</div>
+
+<table class="admin-table" id="recordTable">
+    <thead>
+        <tr>
+            <th>姓名</th>
+            <th>日期</th>
+            <th>mMRC</th>
+            <th>CAT 總分</th>
+            <th>臨床影響程度</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+    const catQuestions = [
+        { left: "我從不咳嗽", right: "我一直在咳嗽" },
+        { left: "我胸腔一點痰也沒有", right: "我胸腔塞滿了痰" },
+        { left: "我一點也沒有胸悶的感覺", right: "我有很嚴重的胸悶" },
+        { left: "爬坡或爬樓梯時不會喘", right: "爬坡或爬樓梯時非常喘" },
+        { left: "在家裡的活動不受限制", right: "在家裡的活動非常受限制" },
+        { left: "我能安心離家", right: "我一點也不敢離家" },
+        { left: "我睡得很安穩", right: "我睡得不安穩" },
+        { left: "我很有精神", right: "我一點精神也沒有" }
+    ];
+
+    const catScores = new Array(8).fill(null);
+
+    // 生成題目
+    const catContainer = document.getElementById('cat-questions');
+    catQuestions.forEach((q, index) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cat-item';
+        let buttonsHtml = '';
+        for (let i = 0; i <= 5; i++) {
+            buttonsHtml += `<button class="score-btn" onclick="selectScore(${index}, ${i}, this)">${i}</button>`;
+        }
+        itemDiv.innerHTML = `<div class="cat-text-left">${q.left}</div><div class="cat-options">${buttonsHtml}</div><div class="cat-text-right">${q.right}</div>`;
+        catContainer.appendChild(itemDiv);
+    });
+
+    function selectScore(qIndex, score, btn) {
+        catScores[qIndex] = score;
+        const parent = btn.parentElement;
+        parent.querySelectorAll('.score-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateUI();
+    }
+
+    function updateUI() {
+        const total = catScores.reduce((a, b) => (a || 0) + (b || 0), 0);
+        const displayArea = document.getElementById('total-display-area');
+        const severityText = document.getElementById('severity-text');
+        const scoreBox = document.getElementById('totalScoreDisplay');
+        
+        scoreBox.innerText = total;
+
+        // 判斷等級與變色邏輯
+        if (catScores.includes(null)) {
+            severityText.innerText = "填寫中...";
+            displayArea.style.backgroundColor = "var(--default-blue)";
+            return;
+        }
+
+        if (total <= 10) {
+            severityText.innerText = "輕微影響";
+            displayArea.style.backgroundColor = "var(--level-low)";
+        } else if (total <= 20) {
+            severityText.innerText = "中等影響";
+            displayArea.style.backgroundColor = "var(--level-mid)";
+        } else if (total <= 30) {
+            severityText.innerText = "嚴重影響";
+            displayArea.style.backgroundColor = "var(--level-high)";
+        } else {
+            severityText.innerText = "非常嚴重影響";
+            displayArea.style.backgroundColor = "var(--level-critical)";
+        }
+    }
+
+    function submitData() {
+        const name = document.getElementById('patientName').value;
+        const date = document.getElementById('visitDate').value;
+        const mmrc = document.getElementById('mmrcScore').value;
+        
+        if (!name || !date || catScores.includes(null)) {
+            alert("請確保姓名、日期與 8 項 CAT 評分皆已填寫完成！");
+            return;
+        }
+
+        const total = catScores.reduce((a, b) => a + b, 0);
+        let sev = document.getElementById('severity-text').innerText;
+        let color = document.getElementById('total-display-area').style.backgroundColor;
+
+        const tableBody = document.querySelector('#recordTable tbody');
+        const row = tableBody.insertRow(0);
+        row.innerHTML = `
+            <td>${name}</td>
+            <td>${date}</td>
+            <td>${mmrc} 級</td>
+            <td>${total} 分</td>
+            <td style="color: white; background-color: ${color}; font-weight: bold;">${sev}</td>
+        `;
+
+        alert("資料已成功傳送到下方紀錄表！");
+    }
+</script>
+
+</body>
+</html>
