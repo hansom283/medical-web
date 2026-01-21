@@ -265,20 +265,48 @@
         }
     }
 
-    function submitData() {
-        const name = document.getElementById('patientName').value;
-        const date = document.getElementById('visitDate').value;
-        const mmrc = document.getElementById('mmrcScore').value;
+async function submitData() {
+    const name = document.getElementById('patientName').value;
+    const date = document.getElementById('visitDate').value;
+    const mmrc = document.getElementById('mmrcScore').value;
+    
+    if (!name || !date || catScores.includes(null)) {
+        alert("請確保姓名、日期與 8 項 CAT 評分皆已填寫完成！");
+        return;
+    }
+
+    const total = catScores.reduce((a, b) => a + b, 0);
+    const sev = document.getElementById('severity-text').innerText;
+
+    // 準備要傳送到 Google 的資料
+    const payload = {
+        name: name,
+        date: date,
+        mmrc: mmrc + " 級",
+        catScore: total,
+        severity: sev
+    };
+
+    // 顯示傳送中狀態
+    const btn = document.querySelector('.submit-btn');
+    btn.innerText = "資料傳送中...";
+    btn.disabled = true;
+
+    try {
+        // 替換下方的網址為你的 Google Apps Script 網址
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxOxV4SNOGjnw_CANDrldBdPdpj8PC9JxMBXIPU3fy4-NJ_FpD_HZNM8hcRIMJyBRys/exec'; 
+
+        await fetch(scriptURL, {
+            method: 'POST',
+            mode: 'no-cors', // Google Apps Script 必要設定
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        alert("資料已成功上傳至雲端試算表！");
         
-        if (!name || !date || catScores.includes(null)) {
-            alert("請確保姓名、日期與 8 項 CAT 評分皆已填寫完成！");
-            return;
-        }
-
-        const total = catScores.reduce((a, b) => a + b, 0);
-        let sev = document.getElementById('severity-text').innerText;
-        let color = document.getElementById('total-display-area').style.backgroundColor;
-
+        // 更新本地表格 (僅作顯示用)
         const tableBody = document.querySelector('#recordTable tbody');
         const row = tableBody.insertRow(0);
         row.innerHTML = `
@@ -286,11 +314,17 @@
             <td>${date}</td>
             <td>${mmrc} 級</td>
             <td>${total} 分</td>
-            <td style="color: white; background-color: ${color}; font-weight: bold;">${sev}</td>
+            <td style="font-weight: bold;">${sev}</td>
         `;
 
-        alert("資料已成功傳送到下方紀錄表！");
+    } catch (error) {
+        console.error('Error!', error.message);
+        alert("上傳失敗，請檢查網路連線。");
+    } finally {
+        btn.innerText = "確認送出資料";
+        btn.disabled = false;
     }
+}
 </script>
 
 </body>
